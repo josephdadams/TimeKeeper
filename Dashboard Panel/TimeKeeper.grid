@@ -1,0 +1,560 @@
+<?xml version="1.0" encoding="UTF-8"?><abs contexttype="opengear">
+   <meta>
+      <timer autostart="true" id="TimeKeeper.UpdateDataTimer" pattern="HH:mm:ss" rate="15000" start="00:00:00" stop="00:00:00">
+         <timertask tasktype="ogscript">TimeKeeper_CheckForNewData();</timertask>
+      </timer>
+      <api>//TimeKeeper Functions //
+
+      //TimeKeeper Functions //
+
+      function TimeKeeper_CheckForNewData()
+      {
+         // runs UpdateAllData if the TimeKeeper interface is not in use
+         var TimeKeeperInterfaceInUse = ogscript.getObject('TimeKeeper.InterfaceInUse');
+         if (!TimeKeeperInterfaceInUse)
+         {
+            TimeKeeper_UpdateAllData();
+         }
+      }
+
+      function TimeKeeper_UpdateAllData()
+      {
+         TimeKeeper_GetAllRooms();
+         TimeKeeper_GetAllTimers();
+         ogscript.hide("TimeKeeper.TimerData");
+         ogscript.hide("TimeKeeper.CountdownData");
+      }
+
+      function TimeKeeper_GetAllRooms()
+      {
+           var address = ogscript.getPrivateString('hosts', 'TimeKeeperServer.address');
+           var port = ogscript.getPrivateString('hosts','TimeKeeperServer.port');
+           
+           var RestURL = '/api/rooms';
+           
+           var status = ''; // what we will get from TimeKeeper
+
+           status = ogscript.post('http://' + address + ':' + port + RestURL, null);
+
+           var parsedJSON = JSON.parse(status);
+
+           var rooms = [];
+
+           rooms.push({"value":"All Rooms", "key": "room-0"});
+
+           for (var i = 0; i &lt; parsedJSON.length; i++)
+           {
+               var roomName = parsedJSON[i].name;
+               var roomKey = parsedJSON[i].id;
+               rooms.push({"value":roomName,"key":roomKey});
+           }
+                  
+          var oid = 'TimeKeeper.CurrentRooms';  
+          var newConstraint = params.createStringStringChoiceConstraint(rooms);
+          params.replaceConstraint(oid, newConstraint);
+      }
+
+      function TimeKeeper_GetAllTimers()
+      {
+           var address = ogscript.getPrivateString('hosts', 'TimeKeeperServer.address');
+           var port = ogscript.getPrivateString('hosts','TimeKeeperServer.port');
+           
+           var RestURL = '/api/timers';
+           
+           var status = ''; // what we will get from TimeKeeper
+
+           status = ogscript.post('http://' + address + ':' + port + RestURL, null);
+
+           var parsedJSON = JSON.parse(status);
+
+           var timers = [];
+           var monthShortNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+           for (var i = 0; i &lt; parsedJSON.length; i++)
+           {
+               var dt = new Date(Number(parsedJSON[i].datetime));
+               var countdowntime = ""; // friendly string of the date/time we are counting down to
+               countdowntime += ((dt.getHours() + 11) % 12 + 1) + ":";
+               countdowntime += (10 &gt; dt.getMinutes() ? "0" : "") + dt.getMinutes() + ":";
+               countdowntime += (10 &gt; dt.getSeconds() ? "0" : "") + dt.getSeconds() + " ";
+               countdowntime += dt.getHours() &gt;= 12 ? "PM" : "AM";                    
+               var timerName = monthShortNames[dt.getMonth()] + " " + dt.getDate() + ", " + dt.getFullYear() + " " + countdowntime;
+               if (parsedJSON[i].label !== "")
+               {
+                  timerName = parsedJSON[i].label + " (" + timerName + ")";
+               }
+               var timerKey = parsedJSON[i].id;
+               timers.push({"value":timerName,"key":timerKey});
+           }
+
+           var id_select = "";
+
+          if (timers.length == 0) // if there weren't any timers created
+          {
+            var timerName = "No timers available.";
+            var timerKey = "timer-0";
+            timers.push({"value":timerName,"key":timerKey});
+            id_select = "timer-0";
+          }
+          else
+          {
+            id_select = parsedJSON[0].id;
+          }
+
+          var timerNameAdd = "(add new timer)";
+          var timerKeyAdd = "timer-add";
+          timers.push({"value":timerNameAdd,"key":timerKeyAdd});
+                  
+          var oid = 'TimeKeeper.CurrentTimers';  
+          var newConstraint = params.createStringStringChoiceConstraint(timers);
+          params.replaceConstraint(oid, newConstraint);
+
+          params.setValue(oid, 0, id_select);
+          
+      }
+
+      function TimeKeeper_GetTimer(timerID)
+      {
+         if (timerID === "timer-add")
+         {
+            TimeKeeper_AddTimer();
+         }
+         else if (timerID !== "timer-0") // the default no-timers loaded selection
+         {
+            var address = ogscript.getPrivateString('hosts', 'TimeKeeperServer.address');
+            var port = ogscript.getPrivateString('hosts','TimeKeeperServer.port');
+              
+            var RestURL = '/api/timer/' + timerID;
+              
+            var status = ''; // what we will get from TimeKeeper
+   
+            status = ogscript.post('http://' + address + ':' + port + RestURL, null);
+   
+            var parsedJSON = JSON.parse(status);
+   
+            switch(parsedJSON.returnStatus)
+            {
+               case "invalid-timer-id":
+                  ogscript.debug("invalid timer ID specified.");
+                  break;
+               case "success":
+                  TimeKeeper_LoadTimerData(parsedJSON.timer);
+                  break;
+               default:
+                  break;
+            }
+         }
+      }
+
+      function TimeKeeper_LoadTimerData(timerObj)
+      {
+         //select date, time, publish, expire time based on timer
+         var d = new Date(Number(timerObj.datetime));
+
+         var monthShortNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+         var dLabel = timerObj.label;
+         var dDate = monthShortNames[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();              
+         var dTime = (10 &gt; d.getHours() ? "0" : "") + d.getHours() + ":" + (10 &gt; d.getMinutes() ? "0" : "") + d.getMinutes() + ":" + (10 &gt; d.getSeconds() ? "0" : "") + d.getSeconds();
+         var dPublish = timerObj.publishMillis;
+         var dExpire = timerObj.expireMillis;
+         var dRoomID = timerObj.roomID;
+
+         params.setValue("TimeKeeper.Timer.Label", 0, dLabel);
+         params.setValue("TimeKeeper.Timer.Date", 0, dDate);
+         params.setValue("TimeKeeper.Timer.Time", 0, dTime);
+         params.setValue("TimeKeeper.Timer.PublishTime", 0, dPublish);
+         params.setValue("TimeKeeper.Timer.ExpireTime", 0, dExpire);
+
+         params.setValue("TimeKeeper.CurrentRooms", 0, dRoomID);
+
+         TimeKeeper_ManagePanels("TimeKeeper.TimerData", true);
+      }
+
+      function TimeKeeper_ManagePanels(oid_toshow, interfaceInUse)
+      {
+         ogscript.hide("TimeKeeper.TimerData");
+         ogscript.hide("TimeKeeper.CountdownData");
+         ogscript.hide("TimeKeeper.MessageData");
+
+         if (oid_toshow !== "")
+         {
+            ogscript.reveal(oid_toshow);
+         }
+         
+         ogscript.putObject('TimeKeeper.InterfaceInUse', interfaceInUse);
+      }
+
+      function TimeKeeper_AddTimer()
+      {
+         var d = new Date();
+
+         var monthShortNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+         var dDate = monthShortNames[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();              
+         var dTime = (10 &gt; d.getHours() ? "0" : "") + d.getHours() + ":" + (10 &gt; d.getMinutes() ? "0" : "") + d.getMinutes() + ":" + "00";
+         var dPublish = "0";
+         var dExpire = "0";
+
+         params.setValue("TimeKeeper.CurrentTimers", 0, "timer-add");
+
+         params.setValue("TimeKeeper.Timer.Label", 0, "");
+         params.setValue("TimeKeeper.Timer.Date", 0, dDate);
+         params.setValue("TimeKeeper.Timer.Time", 0, dTime);
+         params.setValue("TimeKeeper.Timer.PublishTime", 0, dPublish);
+         params.setValue("TimeKeeper.Timer.ExpireTime", 0, dExpire);
+         params.setValue("TimeKeeper.CurrentRooms", 0, "room-0");
+
+         TimeKeeper_ManagePanels("TimeKeeper.TimerData", true);
+      }
+
+      function TimeKeeper_AddCountdown()
+      {
+         params.setValue("TimeKeeper.Timer.Label", 0, "");
+         params.setValue("TimeKeeper.CurrentRooms", 0, "room-0");
+         TimeKeeper_ManagePanels("TimeKeeper.CountdownData", true);
+      }
+
+      function TimeKeeper_SaveTimer()
+      {
+         var address = ogscript.getPrivateString('hosts', 'TimeKeeperServer.address');
+         var port = ogscript.getPrivateString('hosts','TimeKeeperServer.port');
+
+         var RestURL = "";
+         var timerID = params.getValue("TimeKeeper.CurrentTimers", 0);
+
+         var status = ""; // what we will get from TimeKeeper
+         var JSONdata = "";
+         var timerObj = {};
+                          
+         if (timerID === "timer-add")
+         {
+            RestURL = "/api/timer/add";
+         }
+         else
+         {
+            RestURL = "/api/timer/update/" + timerID;
+            timerObj.id = timerID;
+         }
+
+         var dtLabel = params.getValue("TimeKeeper.Timer.Label", 0);
+         var dtDate = params.getValue("TimeKeeper.Timer.Date", 0);
+         var dtTime = params.getValue("TimeKeeper.Timer.Time", 0);
+         var dtPublish = params.getValue("TimeKeeper.Timer.PublishTime", 0);
+         var dtExpire = params.getValue("TimeKeeper.Timer.ExpireTime", 0);
+
+         var dtRoomID = params.getValue("TimeKeeper.CurrentRooms", 0);
+         
+         var dt = new Date(dtDate + " " + dtTime);
+         timerObj.label = dtLabel;
+         timerObj.datetime = dt.getTime();
+         timerObj.publishMillis = dtPublish;
+         timerObj.expireMillis = dtExpire;
+         timerObj.roomID = dtRoomID;
+
+         JSONdata = JSON.stringify(timerObj);
+
+         ogscript.asyncHTTP('http://' + address + ':' + port + RestURL, 'POST', 'application/json', timerObj, TimeKeeper_SaveTimerCallback)
+      }
+
+      function TimeKeeper_SaveTimerCallback(success, sentData, resultString, exception)
+      {
+         var parsedJSON = JSON.parse(success);
+         
+         switch(parsedJSON.returnStatus)
+         {
+            case "invalid-timer-id":
+               ogscript.debug("invalid timer ID specified.");
+               break;
+            case "success":
+               //show a "saved" message
+               ogscript.debug("Timer Saved.");
+               TimeKeeper_ManagePanels("", false);
+               break;
+            default:
+               break;
+         }
+
+         TimeKeeper_GetAllTimers();
+      }
+
+      function TimeKeeper_CancelTimer()
+      {
+         TimeKeeper_ManagePanels("", false);
+      }
+
+      function TimeKeeper_DeleteTimer()
+      {
+         var address = ogscript.getPrivateString('hosts', 'TimeKeeperServer.address');
+         var port = ogscript.getPrivateString('hosts','TimeKeeperServer.port');
+
+         var RestURL = "";
+         var timerID = params.getValue("TimeKeeper.CurrentTimers", 0);
+
+         var status = ""; // what we will get from TimeKeeper
+         var JSONdata = "";
+                          
+         if (timerID !== "timer-add")
+         {
+            RestURL = "/api/timer/delete/" + timerID;
+         }
+
+         ogscript.asyncHTTP('http://' + address + ':' + port + RestURL, 'POST', 'application/json', null, TimeKeeper_DeleteTimerCallback)
+      }
+
+      function TimeKeeper_DeleteTimerCallback(success, sentData, resultString, exception)
+      {
+         var parsedJSON = JSON.parse(success);
+         
+         switch(parsedJSON.returnStatus)
+         {
+            case "invalid-timer-id":
+               ogscript.debug("invalid timer ID specified.");
+               break;
+            case "success":
+               //show a "saved" message
+               ogscript.debug("Timer Deleted.");
+               TimeKeeper_ManagePanels("", false);
+               break;
+            default:
+               break;
+         }
+
+         TimeKeeper_GetAllTimers();
+      }
+
+      function TimeKeeper_SaveCountdown()
+      {
+         var address = ogscript.getPrivateString('hosts', 'TimeKeeperServer.address');
+         var port = ogscript.getPrivateString('hosts','TimeKeeperServer.port');
+
+         var RestURL = "";
+
+         var status = ""; // what we will get from TimeKeeper
+         var JSONdata = "";
+         var timerObj = {};
+                          
+         RestURL = "/api/timer/add";
+
+         var dtOffset = params.getValue("TimeKeeper.Countdown.CountdownTime", 0);
+
+         var d = new Date();
+         var dt = new Date(d.getTime() + (dtOffset * 1000));
+
+         var dtLabel = params.getValue("TimeKeeper.Timer.Label", 0);
+         var dtRoomID = params.getValue("TimeKeeper.CurrentRooms", 0);
+
+         timerObj.label = dtLabel;
+         timerObj.datetime = dt.getTime();
+         timerObj.publishMillis = 120000;
+         timerObj.expireMillis = 120000;
+         timerObj.roomID = dtRoomID;
+
+         ogscript.asyncHTTP('http://' + address + ':' + port + RestURL, 'POST', 'application/json', timerObj, TimeKeeper_SaveTimerCallback)
+      }
+
+      function TimeKeeper_CancelCountdown()
+      {
+         TimeKeeper_ManagePanels("", false);
+      }
+
+      function TimeKeeper_AddMessage()
+      {
+         params.setValue("TimeKeeper.Message", 0, "");
+         params.setValue("TimeKeeper.CurrentRooms", 0, "room-0");
+         TimeKeeper_ManagePanels("TimeKeeper.MessageData", true);
+      }
+
+      function TimeKeeper_SaveMessage()
+      {
+         var address = ogscript.getPrivateString('hosts', 'TimeKeeperServer.address');
+         var port = ogscript.getPrivateString('hosts','TimeKeeperServer.port');
+
+         var RestURL = "";
+
+         var status = ""; // what we will get from TimeKeeper
+         var JSONdata = "";
+         var timerObj = {};
+                          
+         RestURL = "/api/message/add";
+
+         var dtOffset = params.getValue("TimeKeeper.Countdown.CountdownTime", 0);
+
+         var d = new Date();
+         var dt = new Date(d.getTime() + (dtOffset * 1000));
+
+         var dtMessage = params.getValue("TimeKeeper.Message", 0);
+         var dtRoomID = params.getValue("TimeKeeper.CurrentRooms", 0);
+
+         timerObj.message = dtMessage;
+         timerObj.datetime = dt.getTime();
+         timerObj.publishMillis = 30000;
+         timerObj.expireMillis = 10000;
+         timerObj.roomID = dtRoomID;
+
+         ogscript.asyncHTTP('http://' + address + ':' + port + RestURL, 'POST', 'application/json', timerObj, TimeKeeper_SaveMessageCallback)
+      }
+
+      function TimeKeeper_SaveMessageCallback(success, sentData, resultString, exception)
+      {
+         var parsedJSON = JSON.parse(success);
+         
+         switch(parsedJSON.returnStatus)
+         {
+            case "invalid-message-id":
+               ogscript.debug("invalid message ID specified.");
+               break;
+            case "success":
+               //show a "saved" message
+               ogscript.debug("Message Saved.");
+               TimeKeeper_ManagePanels("", false);
+               break;
+            default:
+               break;
+         }
+
+         TimeKeeper_GetAllTimers();
+      }
+
+      function TimeKeeper_CancelMessage()
+      {
+         TimeKeeper_ManagePanels("", false);
+      }
+      
+      function loadPanel()
+      {
+         TimeKeeper_ManagePanels("", false);
+         ogscript.debug("TimeKeeper Panel Loaded.");
+      }</api>
+      <params>
+         <param access="1" constraintstrict="false" constrainttype="STRING_STRING_CHOICE" maxlength="0" name="Current Rooms" oid="TimeKeeper.CurrentRooms" stateless="true" type="STRING" value="0" widget="default">
+            <constraint key="room-0">All Rooms</constraint>
+         </param>
+         <param access="1" constraintstrict="false" constrainttype="STRING_STRING_CHOICE" maxlength="0" name="Current Timers" oid="TimeKeeper.CurrentTimers" stateless="true" type="STRING" value="0" widget="default">
+            <constraint key="timer-0">(no timers)</constraint>
+         </param>
+         <param access="1" maxlength="0" name="Timer Title" oid="TimeKeeper.Timer.Label" stateless="true" type="STRING" value="" widget="text"/>
+         <param access="1" maxlength="0" name="Timer Date" oid="TimeKeeper.Timer.Date" stateless="true" type="STRING" value="Aug 22, 2018" widget="date-picker-string"/>
+         <param access="1" maxlength="0" name="Timer Time" oid="TimeKeeper.Timer.Time" stateless="true" type="STRING" value="09:00:00" widget="time-picker"/>
+         <param access="1" constrainttype="INT_CHOICE" name="TimeKeeper Publish Time" oid="TimeKeeper.Timer.PublishTime" precision="0" stateless="true" type="INT32" value="10080" widget="default">
+            <constraint key="0">(do not publish)</constraint>
+            <constraint key="120000">2 minutes</constraint>
+            <constraint key="30000">5 minutes</constraint>
+            <constraint key="600000">10 minutes</constraint>
+            <constraint key="1200000">20 minutes</constraint>
+            <constraint key="1800000">30 minutes</constraint>
+            <constraint key="3600000">1 hour</constraint>
+            <constraint key="7200000">2 hours</constraint>
+            <constraint key="86400000">1 day</constraint>
+            <constraint key="259200000">3 days</constraint>
+            <constraint key="604800000">7 days</constraint>
+         </param>
+         <param access="1" constrainttype="INT_CHOICE" name="TimeKeeper Expire Time" oid="TimeKeeper.Timer.ExpireTime" precision="0" stateless="true" type="INT32" value="60" widget="default">
+            <constraint key="0">(do not expire)</constraint>
+            <constraint key="30000">30 seconds</constraint>
+            <constraint key="60000">1 minute</constraint>
+            <constraint key="120000">2 minutes</constraint>
+            <constraint key="300000">5 minutes</constraint>
+            <constraint key="600000">10 minutes</constraint>
+         </param>
+         <param access="1" constrainttype="INT_CHOICE" name="TimeKeeper Countdown Time" oid="TimeKeeper.Countdown.CountdownTime" precision="0" stateless="true" type="INT32" value="30" widget="default">
+            <constraint key="15">15 seconds</constraint>
+            <constraint key="30">30 seconds</constraint>
+            <constraint key="45">45 seconds</constraint>
+            <constraint key="60">60 seconds</constraint>
+            <constraint key="120">2 minutes</constraint>
+         </param>
+         <param access="1" maxlength="0" name="TimeKeeper Message" oid="TimeKeeper.Message" stateless="true" type="STRING" value="" widget="multiline-text"/>
+         <param access="1" maxlength="0" name="TimeKeeperServer_Address" oid="TimeKeeperServer.Address" type="STRING" value="192.168.11.136" widget="default"/>
+         <param access="1" maxlength="0" name="TimeKeeperServer_Port" oid="TimeKeeperServer.Port" type="STRING" value="4000" widget="default"/>
+      </params>
+      <lookup access="1" id="hosts">
+         <entry key="TimeKeeperServer.address">192.168.11.136</entry>
+         <entry key="TimeKeeperServer.port">4000</entry>
+      </lookup>
+      <ogscript handles="onload" id="tbTimeKeeper" name="onload" targetid="topLevel">loadPanel();</ogscript>
+   </meta>
+   <label height="40" left="40" name="TimeKeeper Control" style="txt-align:west;size:Big;" top="12" width="200"/>
+   <tab height="421" id="theControl" left="33" top="55" width="730">
+      <abs id="tbProduction" name="Production">
+         <param expand="true" height="129" left="16" oid="TimeKeeper.CurrentTimers" onclick="TimeKeeper_GetTimer(params.getValue('TimeKeeper.CurrentTimers', 0));" scroll="vertical" top="55" widget="list" width="273"/>
+         <button buttontype="push" height="40" id="btnTimeKeeper_UpdateAllData" left="20" name="Get Updated Timer Data" top="7" width="190">
+            <task tasktype="ogscript">TimeKeeper_UpdateAllData();</task>
+         </button>
+         <button buttontype="push" height="40" id="btnTimeKeeper_AddTimer" left="20" name="Add Timer" top="190" width="110">
+            <task tasktype="ogscript">TimeKeeper_AddTimer();</task>
+         </button>
+         <button buttontype="push" height="40" id="btnTimeKeeper_AddCountdown" left="155" name="Add Countdown" top="189" width="132">
+            <task tasktype="ogscript">TimeKeeper_AddCountdown();</task>
+         </button>
+         <button buttontype="push" height="40" id="btnTimeKeeper_AddMessage" left="153" name="Add Message" top="231" width="132">
+            <task tasktype="ogscript">TimeKeeper_AddMessage();</task>
+         </button>
+         <abs height="415" id="TimeKeeper.TimerData" left="300" name="TimeKeeper Timer Data" top="5" width="380">
+            <label height="30" id="lblTimeKeeperTimerLabel" left="0" name="Timer" style="size:Big;" top="5" width="170"/>
+            <label height="30" id="lblTimeKeeperTimerLabelLabel" left="5" name="Label:" style="txt-align:east;" top="40" width="100"/>
+            <param expand="true" height="30" left="110" oid="TimeKeeper.Timer.Label" showlabel="false" style="size:Normal;" top="40" width="170"/>
+            <label height="30" id="lblTimeKeeperTimerDateLabel" left="5" name="Date:" style="txt-align:east;" top="80" width="100"/>
+            <param expand="true" height="30" left="110" oid="TimeKeeper.Timer.Date" showlabel="false" style="size:Normal" top="80" width="170"/>
+            <label height="30" id="lblTimeKeeperTimerTimeLabel" left="5" name="Time:" style="txt-align:east;" top="120" width="100"/>
+            <param expand="true" height="30" left="110" oid="TimeKeeper.Timer.Time" showlabel="false" style="size:Normal" top="120" width="170"/>
+            <label height="30" id="lblTimeKeeperTimerPublishLabel" left="5" name="Publish Time:" style="txt-align:east;" top="160" width="100"/>
+            <param expand="true" height="30" left="110" oid="TimeKeeper.Timer.PublishTime" showlabel="false" style="size:Normal" top="160" width="170"/>
+            <label height="45" id="lblTimeKeeperTimerPublishDescription" left="286" name="&lt;html&gt;When the countdown should become visible.&lt;/html&gt;" style="size:Small;" top="157" width="100"/>
+            <label height="30" id="lblTimeKeeperTimerExpireLabel" left="5" name="Expires:" style="txt-align:east;" top="200" width="100"/>
+            <param expand="true" height="30" left="110" oid="TimeKeeper.Timer.ExpireTime" showlabel="false" style="size:Normal" top="200" width="170"/>
+            <label height="45" id="lblTimeKeeperTimerExpiresDescription" left="285" name="&lt;html&gt;When the countdown should highlight red.&lt;/html&gt;" style="size:Small;" top="202" width="100"/>
+            <label height="30" id="lblTimeKeeperRoomLabel" left="5" name="Room:" style="txt-align:east;" top="240" width="100"/>
+            <param expand="true" height="30" left="110" oid="TimeKeeper.CurrentRooms" top="240" widget="combo" width="170"/>
+            <button buttontype="push" height="40" id="btnTimeKeeper_SaveTimer" left="50" name="Save" top="280" width="110">
+               <task tasktype="ogscript">TimeKeeper_SaveTimer();</task>
+            </button>
+            <button buttontype="push" height="40" id="btnTimeKeeper_CancelTimer" left="170" name="Cancel" top="280" width="110">
+               <task tasktype="ogscript">TimeKeeper_CancelTimer();</task>
+            </button>
+            <button buttontype="push" height="40" id="btnTimeKeeper_DeleteTimer" left="50" name="Delete" style="bg#F53F3F;" top="320" width="110">
+               <task tasktype="ogscript">TimeKeeper_DeleteTimer();</task>
+            </button>
+         </abs>
+         <abs height="415" id="TimeKeeper.CountdownData" left="300" name="TimeKeeper Countdown Data" top="5" width="380">
+            <label height="30" id="lblTimeKeeperCountdownLabel" left="0" name="Countdown" style="size:Big;" top="5" width="170"/>
+            <label height="30" id="lblTimeKeeperCountdownLabelLabel" left="5" name="Label:" style="txt-align:east;" top="40" width="100"/>
+            <param expand="true" height="30" left="110" oid="TimeKeeper.Timer.Label" showlabel="false" style="size:Normal;" top="40" width="170"/>
+            <label height="30" id="lblTimeKeeperTimerCountdownLengthLabel" left="5" name="Length:" style="txt-align:east;" top="80" width="100"/>
+            <param expand="true" height="30" left="110" oid="TimeKeeper.Countdown.CountdownTime" showlabel="false" style="size:Normal" top="80" width="170"/>
+            <label height="30" id="lblTimeKeeperCountdownRoomLabel" left="5" name="Room:" style="txt-align:east;" top="110" width="100"/>
+            <param expand="true" height="30" left="110" oid="TimeKeeper.CurrentRooms" top="120" widget="combo" width="170"/>
+            <button buttontype="push" height="40" id="btnTimeKeeper_SaveCountdown" left="50" name="Save" top="160" width="110">
+               <task tasktype="ogscript">TimeKeeper_SaveCountdown();</task>
+            </button>
+            <button buttontype="push" height="40" id="btnTimeKeeper_CountdownCancel" left="170" name="Cancel" top="160" width="110">
+               <task tasktype="ogscript">TimeKeeper_CancelCountdown();</task>
+            </button>
+         </abs>
+         <abs height="415" id="TimeKeeper.MessageData" left="300" name="TimeKeeper Message Data" top="9" width="380">
+            <label height="30" id="lblTimeKeeperMessageLabel" left="0" name="Message" style="size:Big;" top="5" width="170"/>
+            <param expand="true" height="68" left="58" oid="TimeKeeper.Message" showlabel="false" style="size:Normal;" top="94" width="225"/>
+            <label height="48" id="lblTimeKeeperMessageDescription" left="59" name="&lt;html&gt;Add a short message to the screen.&lt;br /&gt;Messages will be  displayed for 30 seconds.&lt;/html&gt;" top="40" width="245"/>
+            <label height="30" id="lblTimeKeeperMessageRoomLabel" left="4" name="Room:" style="txt-align:east;" top="165" width="100"/>
+            <param expand="true" height="30" left="109" oid="TimeKeeper.CurrentRooms" top="166" widget="combo" width="170"/>
+            <button buttontype="push" height="40" id="btnTimeKeeper_SaveMessage" left="51" name="Save" top="201" width="110">
+               <task tasktype="ogscript">TimeKeeper_SaveMessage();</task>
+            </button>
+            <button buttontype="push" height="40" id="btnTimeKeeper_CancelMessage" left="173" name="Cancel" top="200" width="110">
+               <task tasktype="ogscript">TimeKeeper_CancelMessage();</task>
+            </button>
+         </abs>
+      </abs>
+      <abs id="tbSetup" name="Setup">
+         <label height="47" left="5" name="TimeKeeper Server Settings" style="size:Big;" top="-7" width="338"/>
+         <label height="20" left="10" name="IP Address:" top="40" width="80"/>
+         <param height="30" left="90" oid="TimeKeeperServer.Address" top="35" width="150"/>
+         <label height="20" left="250" name="Port:" top="40" width="50"/>
+         <param height="30" left="290" oid="TimeKeeperServer.Port" top="35" width="50"/>
+         <button buttontype="push" fill="both" height="50" left="5" name="Set and Update" top="140" width="350">
+            <task tasktype="ogscript">ogscript.putPrivateString('hosts', 'TimeKeeperServer.Address', params.getValue('TimeKeeperServer.Address',0));
+               ogscript.putPrivateString('hosts', 'TimeKeeperServer.Port', params.getValue('TimeKeeperServer.Port',0));</task>
+         </button>
+      </abs>
+   </tab>
+</abs>
