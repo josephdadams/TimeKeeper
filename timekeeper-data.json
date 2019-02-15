@@ -1,0 +1,16 @@
+{
+ "Rooms": [
+  {
+   "id": "room-1",
+   "name": "Aud 1",
+   "enabled": true
+  },
+  {
+   "id": "room-2",
+   "name": "Aud 2",
+   "enabled": true
+  }
+ ],
+ "Timers": [],
+ "Messages": []
+}
