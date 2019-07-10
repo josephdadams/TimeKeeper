@@ -96,6 +96,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         <i>Deleting a Timer:</i><br />
         Expired Timers older than 5 minutes are automatically deleted, however if you wish to manually delete a timer, make a POST request to <span class="code">/api/timer/delete/<i>timerID</i></span>, where timerID is the ID of the Timer object.
         <br /><br />
+        <i>Adding a Countdown:</i><br />
+        Make a POST request to <span class="code">/api/countdown/<i>roomID</i>/<i>length</i></span>, where <i>roomID</i> is the ID of the room to send the Timer to, and <i>length</i> is the number of seconds for the countdown. The newly created Timer object will be returned as a JSON reply.
+        <br /><br />
         <b>Messages:</b><br />
         Messages can be sent and displayed on viewer clients.<br /><br />
         <i>Getting All Messages:</i><br />
