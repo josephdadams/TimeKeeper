@@ -249,6 +249,7 @@ io.sockets.on('connection', function(socket) {
 				break;
 			default:
 				socket.join(roomID);
+				console.log(roomID + ' joined.');
 				socket.emit('TimeKeeper_Timers', TimeKeeper_GetTimers(roomID));
 				socket.emit('TimeKeeper_Messages', TimeKeeper_GetMessages(roomID));
 				break;
@@ -361,6 +362,11 @@ function TimeKeeper_DeleteRoom(roomID)
 	saveFile();
 }
 
+function TimeKeeper_GetAllTimers()
+{
+	return Timers;
+}
+
 function TimeKeeper_GetTimers(roomID)
 {
 	let timersArray = [];
@@ -407,9 +413,12 @@ function TimeKeeper_AddTimer(timerObj)
 	else
 	{
 		io.to(timerObj.roomID).emit('TimeKeeper_Timers', TimeKeeper_GetTimers(timerObj.roomID)); //send it to the unique room
-		io.emit('TimeKeeper_Timers', TimeKeeper_GetTimers(timerObj.roomID)); //send it to anyone listening to all rooms
 	}
+	
 	console.log('sending new timer to room: ' + timerObj.roomID);
+	
+	io.to('room-0').emit('TimeKeeper_Timers', TimeKeeper_GetAllTimers()); //send update timers to room-0
+	
 	saveFile();
 
 	return newTimerObj;
