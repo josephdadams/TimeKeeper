@@ -4,7 +4,7 @@ A Node.js server supporting a generic API to create and display timers, countdow
 ## Installing this software:
 Copy the code to a working directly on your computer. Make sure Node is installed.
 Run `npm install` to make sure all required modules are downloaded and installed.
-Run `node main.js` to start the server.
+Run `node main.js` to start the server. Runs on port 4000 by default.
 
 ## Using the API:
 ### Rooms:
@@ -57,6 +57,9 @@ Make a POST request to `/api/timer/timerID`, where *timerID* is the ID of the T
 
 #### Deleting a Timer:
 Expired Timers older than 5 minutes are automatically deleted, however if you wish to manually delete a timer, make a POST request to `/api/timer/delete/timerID`, where *timerID* is the ID of the Timer object. 
+
+#### Adding a Countdown Timer:
+Make a GET request to `/api/countdown/roomID/length`, where *roomID* is the ID of the Room object that this timer should be sent to. *length* signifies in seconds how long the countdown should be. The countdown is calculated based on the current datetime of the server.
 
 ### Messages:
 Messages can be sent and displayed on viewer clients.
