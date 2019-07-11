@@ -373,7 +373,7 @@ function TimeKeeper_GetTimers(roomID)
 
 	for (let i = 0; i < Timers.length; i++)
 	{
-		if ((Timers[i].roomID === roomID) || (Timers[i].roomID === 'room-0'))
+		if ((Timers[i].roomID === roomID) || (roomID === 'room-0'))
 		{
 			timersArray.push(Timers[i]);
 		}
