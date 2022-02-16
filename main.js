@@ -20,6 +20,10 @@ var Rooms = []; // array of Room Objects to display
 var Timers = []; // array of Timer Objects to display
 var Messages = []; // array of Message Objects to display
 
+const SupportedTriggerTypes = ['http'];
+
+const axios = require('axios').default; //used for HTTP triggers
+
 //app route setups
 app.get('/', function (req, res) {
 	res.sendFile(__dirname + '/views/index.html');
@@ -161,6 +165,24 @@ app.get('/api/countdown/:roomid/:length', function (req, res) {
 		res.send({returnStatus: 'success', timer: timerObj});
 	}
 });
+
+app.get('/api/:timerid/triggers-disable', function (req, res) {
+	let timerID = req.params.timerID;
+	//disable the triggers for the selected timer
+	let timerObj = TimeKeeper_EnableTriggers(timerID, false);
+	if (timerObj !== null) {
+		res.send({returnStatus: 'success', timer: timerObj});
+	}
+});
+
+app.get('/api/:timerid/triggers-enable', function (req, res) {
+	let timerID = req.params.timerID;
+	//disable the triggers for the selected timer
+	let timerObj = TimeKeeper_EnableTriggers(timerID, true);
+	if (timerObj !== null) {
+		res.send({returnStatus: 'success', timer: timerObj});
+	}
+});
  
  //Message APIs
 app.get('/api/messages', function (req, res) {
@@ -198,8 +220,8 @@ app.post('/api/message/delete/:messageid', function (req, res) {
 });
 
 function loadFile() //loads settings on first load of app
-{   
-	let rawdata = fs.readFileSync(JSONdatafile);  
+{
+	let rawdata = fs.readFileSync(JSONdatafile);
 	let myJson = JSON.parse(rawdata); 
 
 	if (myJson.Rooms)
@@ -220,20 +242,20 @@ function loadFile() //loads settings on first load of app
 
 function saveFile() //saves settings to a local storage file for later recalling on restarts, etc.
 {
-	var myJson = {        
+	var myJson = {
 		Rooms: Rooms,
 		Timers: Timers,
-		Messages: Messages   
+		Messages: Messages 
 	};
 
 	fs.writeFileSync(JSONdatafile, JSON.stringify(myJson, null, 1), 'utf8', function(error) {
 		if (error)
 		{ 
-		  console.log('error: ' + error);
+			console.log('error: ' + error);
 		}
 		else
 		{
-		  console.log('file saved');
+			console.log('file saved');
 		}
 	});
 }
@@ -241,7 +263,7 @@ function saveFile() //saves settings to a local storage file for later recalling
 //SOCKET.IO config
 io.sockets.on('connection', function(socket) {
 	// VIEWER SOCKETS //
-	socket.on('TimeKeeper_JoinRoom', function(roomID) {       
+	socket.on('TimeKeeper_JoinRoom', function(roomID) {
 		switch(roomID)
 		{
 			case 'TimeKeeper_Clients':
@@ -257,15 +279,15 @@ io.sockets.on('connection', function(socket) {
 	});
 	
 	socket.on('TimeKeeper_GetAllRooms', function(onlyShowEnabled) {
-	   socket.emit('TimeKeeper_Rooms', TimeKeeper_GetRooms(onlyShowEnabled)); 
+		socket.emit('TimeKeeper_Rooms', TimeKeeper_GetRooms(onlyShowEnabled)); 
 	});
 
 	socket.on('TimeKeeper_GetTimers', function(roomID) {
-	   socket.emit('TimeKeeper_Timers', TimeKeeper_GetTimers(roomID)); 
+		socket.emit('TimeKeeper_Timers', TimeKeeper_GetTimers(roomID)); 
 	});
 
 	socket.on('TimeKeeper_GetMessages', function(roomID) {
-	   socket.emit('TimeKeeper_Messages', TimeKeeper_GetMessages(roomID)); 
+		socket.emit('TimeKeeper_Messages', TimeKeeper_GetMessages(roomID)); 
 	});
 
 	socket.on('disconnect', function(){
@@ -353,10 +375,10 @@ function TimeKeeper_UpdateRoom(roomID, roomObj)
 function TimeKeeper_DeleteRoom(roomID)
 {
 	Rooms.find((o, i) => {
-	   if (o.id === roomID)
-	   {
-		   Rooms.splice(i, 1);
-	   }
+		if (o.id === roomID)
+		{
+			Rooms.splice(i, 1);
+		}
 	});
 
 	saveFile();
@@ -398,12 +420,48 @@ function TimeKeeper_AddTimer(timerObj)
 {
 	let newTimerObj = {};
 
-	newTimerObj.id = 'timer-' + uuidv4();
+	if (!timerObj.id) { //only add the id if we didn't already send one - helpful for API uses where we might want to have the same ID every time
+		newTimerObj.id = 'timer-' + uuidv4();
+	}
+	else {
+		newTimerObj.id = timerObj.id;
+	}
 	newTimerObj.datetime = timerObj.datetime;
 	newTimerObj.label = timerObj.label;
 	newTimerObj.expireMillis = timerObj.expireMillis;
 	newTimerObj.publishMillis = timerObj.publishMillis;
 	newTimerObj.roomID = timerObj.roomID;
+
+	if (timerObj.triggersEnabled === true) {
+		newTimerObj.triggersEnabled = true;
+	}
+	else if (timerObj.triggersEnabled === false) {
+		newTimerObj.triggersEnabled = false;
+	}
+	else {
+		newTimerObj.triggersEnabled = true;
+	}
+
+	if (timerObj.triggers) {
+		newTimerObj.triggers = [];
+		//process the triggers specified in the timer object
+		for (let i = 0; i < timerObj.triggers.length; i++) {
+			let valid = true;
+			let triggerObj = timerObj.triggers[i];
+
+			if (!triggerObj.id) {
+				triggerObj.id = 'trigger' + uuidv4();
+			}
+
+			if (!SupportedTriggerTypes.includes(triggerObj.type)) { //the type is not one of the currently implemented types
+				valid = false;
+			}
+
+			if (valid) {
+				newTimerObj.triggers.push(triggerObj);
+			}
+		}
+	}
 
 	Timers.push(newTimerObj);
 	if (timerObj.roomID === 'room-0')
@@ -497,6 +555,15 @@ function TimeKeeper_DeleteTimer(timerID)
 	}
 
 	saveFile();
+}
+
+function TimeKeeper_EnableTriggers(timerId, value) {
+	for (let i = 0; i < Timers.length; i++) {
+		if (Timers[i].id === timerId) {
+			Timers[i].triggersEnabled = value;
+			return Timers[i];
+		}
+	}
 }
 
 function TimeKeeper_GetMessages(roomID)
@@ -637,7 +704,7 @@ function TimeKeeper_ReviewTimers()
 	let Timers_ToDelete = [];
 	let Messages_ToDelete = [];
 
-	//Review Timers for expired ones    
+	//Review Timers for expired ones
 	for (let i = 0; i < Timers.length; i++)
 	{
 		let dt = Timers[i].datetime;
@@ -655,7 +722,7 @@ function TimeKeeper_ReviewTimers()
 		TimeKeeper_DeleteTimer(Timers_ToDelete[i]);
 	}
 
-	//Review Messages for expired ones    
+	//Review Messages for expired ones
 	for (let i = 0; i < Messages.length; i++)
 	{
 		let dt = Messages[i].datetime;
@@ -678,10 +745,90 @@ function TimeKeeper_ReviewTimers()
 	setTimeout(TimeKeeper_ReviewTimers, 60 * 1000); // runs every minute
 }
 
+function TimeKeeper_CheckTriggers()
+{
+	//looks at all the timers and runs any triggers if it is time to do so
+	for (let i = 0; i < Timers.length; i++)
+	{
+		let timer = Timers[i];
+		if (timer.triggers) {
+			let dtTimer = timer.datetime;
+			for (let j = 0; j < timer.triggers.length; j++) {
+				let trigger = timer.triggers[j];
+				let time = trigger.time;
+				let dtTrigger = dtTimer + time; //the time since epoch for the trigger time. Could be more or less than the actual timer
+				let dtNow = new Date().getTime(); //curent epoch time
+				console.log('dtTimer:  ' + dtTimer);
+				console.log('dtTrigger:' + dtTrigger);
+				console.log('dtNow:    ' + dtNow);
+				if (dtTrigger <= dtNow) { //the trigger needs to be run
+					TimeKeeper_CheckTrigger(timer.id, trigger.id);
+				}
+				else {
+					console.log('no');
+				}
+			}
+		}
+	}
+}
+
+function TimeKeeper_CheckTrigger(timerId, triggerId) {
+	console.log('checking trigger...');
+	for (let i = 0; i < Timers.length; i++) {
+		if (Timers[i].id === timerId) {
+			for (let j = 0; j < Timers[i].triggers.length; j++) {
+				if (Timers[i].triggers[j].id === triggerId) {
+					//this is the one we want
+					if (!Timers[i].triggers[j].runCount && Timers[i].triggersEnabled) { //only run it if it has not been run yet and triggers are enabled for this timer
+						console.log('Executing Trigger...');
+						TimeKeeper_ExecuteTrigger(Timers[i].triggers[j]);
+						Timers[i].triggers[j].runCount = 1;
+					}
+				}
+			}
+		}
+	}
+}
+
+function TimeKeeper_ExecuteTrigger(triggerObj) {
+	if (triggerObj.type === 'http') {
+		console.log('Executing Trigger...');
+		TimeKeeper_ExecuteTrigger_HTTP(triggerObj);
+	}
+}
+
+function TimeKeeper_ExecuteTrigger_HTTP(triggerObj) {
+	let props = triggerObj.properties;
+
+	let options = {};
+	if (props.method === 'GET') {
+		//do an HTTP GET
+
+		options.method = 'GET';
+		options.url = props.url;
+
+		axios(options);
+	}
+	else if (props.method === 'POST') {
+		//do HTTP POST
+		options.method = 'POST';
+		options.url = props.url;
+		options.data = props.data;
+		if (props.contentType) {
+			options.headers = { 'content-type': props.contentType }
+		}
+		
+		axios(options);
+	}
+	else { //maybe add PATCH, PUT, etc. some day
+		console.log('unsupported HTTP method for trigger: ' + triggerObj);
+	}
+}
+
 http.listen(listenPort, function () {
 	console.log('listening on *:' + listenPort);
-	console.log('latest version.');
 });
 
 loadFile(); //loads the last saved set of data
+TriggerInterval = setInterval(TimeKeeper_CheckTriggers, 500); //starts the process to see which triggers need running
 TimeKeeper_ReviewTimers(); //starts the review process to delete expired timers and messages from the arrays
