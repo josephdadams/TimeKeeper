@@ -2,12 +2,12 @@
  "Rooms": [
   {
    "id": "room-1",
-   "name": "Aud 1",
+   "name": "Auditorium One",
    "enabled": true
   },
   {
    "id": "room-2",
-   "name": "Aud 2",
+   "name": "Auditorium Two",
    "enabled": true
   }
  ],

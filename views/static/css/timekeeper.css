@@ -1,0 +1,179 @@
+body
+{
+	background-color: #111111;
+	font-family: sans-serif;
+	font-weight: bold;
+	padding: 20px;
+	overflow: hidden;
+}
+
+.timer-hud {
+	position: relative;
+	float: left;
+	font-size: 20px;
+	padding: 5px;
+	bottom: 0;
+	left: 0;
+}
+
+.timer-hud-element {
+	cursor: pointer;
+	display: inline-block;
+	padding: 5px;
+	background: #38414a;
+	background: rgba(40,50,61,.62);
+	color: #ffffff;
+}
+
+.timer-controls {
+	position: relative;
+	float: right;
+	font-size: 20px;
+	padding: 5px;
+	top: 0;
+	right: 0;
+}
+
+.timer-control {
+	cursor: pointer;
+	display: inline-block;
+	padding: 5px;
+	background: #38414a;
+	background: rgba(40,50,61,.62);
+	color: #ffffff;
+}
+
+.add-timer {
+	cursor: pointer;
+}
+
+.selectedRoom {
+	font-size: 20px;
+	padding: 5px;
+	top: 0;
+	left: 0;
+	color: #ffffff;
+}
+		
+#selRoomList
+{
+	height: 5vh;
+	width: 15vh;
+}
+
+#clocktimedate
+{
+	width: 50vw;
+	display: block;
+	font-size: 15vw;
+}
+
+#clockdate
+{
+	display: block;
+	font-size: 25%;         
+	font-weight: 200;
+	color: #908686;
+}
+
+#clockHM
+{
+	float: left;
+	color: #7BB861;
+	display: inline;
+}
+
+#clockSmallDetails
+{
+	display: inline-block;
+}
+
+#clockS
+{
+	font-size: 45%;
+}
+
+#clockAMPM
+{
+	font-size: 33%;
+	color: #908686;
+}
+
+.timers-container
+{
+	font-size: 14vmin;
+	position: absolute;
+	top: 5px;
+	right: 5px;
+}
+
+.timer-container
+{
+	text-align: left;
+	color: #ffffff;
+}
+
+.countdown
+{
+	display: -moz-inline-stack;
+	display: inline-block;
+}
+
+.countdown_digit
+{
+	padding: 5px 20px;
+	background: #38414a;
+	background: rgba(40,50,61,.62);
+	font-family: sans-serif;
+	font-weight: 300;
+}
+
+.countdown_seconds_digit
+{
+	color: #e55182;
+}
+
+.countdown_digitlabel
+{
+	padding: 5px;
+	font-size: 1.5vw;
+	text-align: center;
+	text-transform: uppercase;
+	color: #999999;
+}
+
+.countdown_label
+{
+	font-size: 2vw;
+	text-align: left;
+	color: #908686;
+	padding-bottom: 15px;
+}
+
+.expired
+{
+	animation: blinker 1s linear infinite;
+	font-size: 14vmin;
+	padding: 5px 20px;
+	background: #38414a;
+	background: rgba(40,50,61,.62);
+	font-family: sans-serif;
+	font-weight: 300;
+}
+
+@keyframes blinker
+{
+	50%
+	{
+		opacity: 0;
+	}
+}
+
+#divMessage
+{
+	position: absolute;
+	width: 30%;
+	top: 10%;
+	right: 20%;
+	font-size: 5vw;
+}

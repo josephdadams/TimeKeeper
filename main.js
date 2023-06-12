@@ -11,6 +11,8 @@ const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const listenPort = 4000;
 
+const path = require('path');
+
 //filesystem variables
 const fs = require('fs');
 const JSONdatafile = 'timekeeper-data.json'; //local storage JSON file
@@ -262,7 +264,10 @@ function saveFile() //saves settings to a local storage file for later recalling
 
 //SOCKET.IO config
 io.sockets.on('connection', function(socket) {
-	// VIEWER SOCKETS //
+	socket.on('connect', function() {
+		console.log('New Client Connected.');
+	});
+
 	socket.on('TimeKeeper_JoinRoom', function(roomID) {
 		switch(roomID)
 		{
@@ -277,17 +282,34 @@ io.sockets.on('connection', function(socket) {
 				break;
 		}
 	});
+
+	socket.on('TimeKeeper_LeaveRoom', function(roomID) {
+		socket.leave(roomID);
+		console.log(roomID + ' left.');
+	});
 	
 	socket.on('TimeKeeper_GetAllRooms', function(onlyShowEnabled) {
 		socket.emit('TimeKeeper_Rooms', TimeKeeper_GetRooms(onlyShowEnabled)); 
 	});
 
 	socket.on('TimeKeeper_GetTimers', function(roomID) {
-		socket.emit('TimeKeeper_Timers', TimeKeeper_GetTimers(roomID)); 
+		socket.emit('TimeKeeper_Timers', TimeKeeper_GetTimers(roomID));
 	});
 
 	socket.on('TimeKeeper_GetMessages', function(roomID) {
 		socket.emit('TimeKeeper_Messages', TimeKeeper_GetMessages(roomID)); 
+	});
+
+	socket.on('TimeKeeper_AddTimer', function(timerObj) {
+		TimeKeeper_AddTimer(timerObj);
+	});
+
+	socket.on('TimeKeeper_UpdateTimer', function(timerID, timerObj) {
+		TimeKeeper_UpdateTimer(timerID, timerObj);
+	});
+
+	socket.on('TimeKeeper_DeleteTimer', function(timerID) {
+		TimeKeeper_DeleteTimer(timerID);
 	});
 
 	socket.on('disconnect', function(){
@@ -297,6 +319,7 @@ io.sockets.on('connection', function(socket) {
 				console.log('Viewer Client Disconnected.');
 				break;
 			default:
+				console.log(socket.id + ' left.');
 				break;
 		}
 	});
@@ -391,14 +414,10 @@ function TimeKeeper_GetAllTimers()
 
 function TimeKeeper_GetTimers(roomID)
 {
-	let timersArray = [];
+	let timersArray = Timers.filter(t => t.roomID === roomID || t.roomID === 'room-0' || roomID === 'room-0');
 
-	for (let i = 0; i < Timers.length; i++)
-	{
-		if ((Timers[i].roomID === roomID) || (roomID === 'room-0'))
-		{
-			timersArray.push(Timers[i]);
-		}
+	if (timersArray === undefined) {
+		timersArray = [];
 	}
 
 	return timersArray;
@@ -505,14 +524,12 @@ function TimeKeeper_UpdateTimer(timerID, timerObj)
 	{
 		saveFile();
 
-		if (timerObj.roomID === 'room-0')
-		{
-			io.emit('TimeKeeper_Timers', TimeKeeper_GetTimers(timerObj.roomID));
-		}
-		else
+		if (timerObj.roomID !== 'room-0')
 		{
 			io.to(timerObj.roomID).emit('TimeKeeper_Timers', TimeKeeper_GetTimers(timerObj.roomID));
 		}
+
+		io.emit('TimeKeeper_Timers', TimeKeeper_GetTimers('room-0'));
 	}
 	else // just re-add it if it got deleted
 	{
@@ -540,18 +557,15 @@ function TimeKeeper_DeleteTimer(timerID)
 
 	if (index !== null)
 	{
+		let timerID = Timers[index].id;
 		let roomID = Timers[index].roomID;
+
+		console.log('Deleting Timer: ' + timerID + ' from room: ' + roomID);
 
 		Timers.splice(index, 1);
 
-		if (roomID === 'room-0')
-		{
-			io.emit('TimeKeeper_Timers', TimeKeeper_GetTimers(roomID));
-		}
-		else
-		{
-			io.to(roomID).emit('TimeKeeper_Timers', TimeKeeper_GetTimers(roomID));
-		}
+		io.to(roomID).emit('TimeKeeper_Timers', TimeKeeper_GetTimers(roomID));
+		io.to('room-0').emit('TimeKeeper_Timers', TimeKeeper_GetTimers('room-0'));
 	}
 
 	saveFile();
@@ -753,19 +767,28 @@ function TimeKeeper_CheckTriggers()
 		let timer = Timers[i];
 		if (timer.triggers) {
 			let dtTimer = timer.datetime;
-			for (let j = 0; j < timer.triggers.length; j++) {
-				let trigger = timer.triggers[j];
-				let time = trigger.time;
-				let dtTrigger = dtTimer + time; //the time since epoch for the trigger time. Could be more or less than the actual timer
-				let dtNow = new Date().getTime(); //curent epoch time
-				console.log('dtTimer:  ' + dtTimer);
-				console.log('dtTrigger:' + dtTrigger);
-				console.log('dtNow:    ' + dtNow);
-				if (dtTrigger <= dtNow) { //the trigger needs to be run
-					TimeKeeper_CheckTrigger(timer.id, trigger.id);
+			if (timer.triggers.length > 0) {
+				for (let j = 0; j < timer.triggers.length; j++) {
+					let trigger = timer.triggers[j];
+					let time = trigger.time;
+					let dtTrigger = dtTimer + time; //the time since epoch for the trigger time. Could be more or less than the actual timer
+					let dtNow = new Date().getTime(); //curent epoch time
+					console.log('dtTimer:  ' + dtTimer);
+					console.log('dtTrigger:' + dtTrigger);
+					console.log('dtNow:    ' + dtNow);
+					if (dtTrigger <= dtNow) { //the trigger needs to be run
+						TimeKeeper_CheckTrigger(timer.id, trigger.id);
+					}
+					else {
+						console.log('no');
+					}
 				}
-				else {
-					console.log('no');
+			}
+			else {
+				//no triggers, so let's just check to see if the timer has expired, and delete it if so
+				let dtNow = new Date().getTime(); //curent epoch time
+				if (dtTimer <= dtNow) { //the timer needs to be deleted
+					TimeKeeper_DeleteTimer(timer.id);
 				}
 			}
 		}
