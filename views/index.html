@@ -47,7 +47,7 @@
 					<div class="form-outline">
 						<label class="form-label" for="addTimerDate">Date/Time to Countdown to</label>
 						<div class="input-group" id="addTimerDate" data-td-target-input="nearest" data-td-target-toggle="nearest">
-						<input id="addTimerDateDT" type="datetime-local" data-td-target="#addTimerDate" />
+						<input id="addTimerDateDT" type="datetime-local" data-td-target="#addTimerDate" step="1" />
 					  </div>
 					</div>
 					<div class="form-outline">
@@ -116,7 +116,7 @@
 			function datetimeLocal(datetime) {
 				const dt = new Date(datetime);
 				dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
-				return dt.toISOString().slice(0, 16);
+				return dt.toISOString().slice(0, 19);
 			}
 
 			function setupAddTimer() {
@@ -125,7 +125,7 @@
 				// Set the default date/time to 2 hours from now
 				let dt = new Date();
 				dt.setHours(dt.getHours() + 2);
-				let dtString = dt.toLocaleString([], {year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+				let dtString = dt.toLocaleString([], {year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second:'2-digit'});
 				document.getElementById('addTimerDateDT').value = datetimeLocal(dtString);
 
 				// Set the default publish time to 2 hours prior

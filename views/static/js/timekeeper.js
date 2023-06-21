@@ -155,7 +155,7 @@ function TimeKeeper_UpdateAllTimers(d)
 				timerID = TimeKeeper_Timers[i].id;
 				$('#addTimerLabel').val(TimeKeeper_Timers[i].label);
 				let dtDate = new Date(TimeKeeper_Timers[i].datetime);
-				let dtString = dtDate.toLocaleString([], {year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+				let dtString = dtDate.toLocaleString([], {year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'});
 				$('#addTimerDateDT').val(datetimeLocal(dtString));
 				$('#addTimerPublish').val(TimeKeeper_Timers[i].publishMillis);
 				$('#addTimerExpire').val(TimeKeeper_Timers[i].expireMillis);
