@@ -2,15 +2,41 @@
  "Rooms": [
   {
    "id": "room-1",
-   "name": "Auditorium One",
+   "name": "Control Room A",
    "enabled": true
   },
   {
    "id": "room-2",
-   "name": "Auditorium Two",
+   "name": "Control Room B",
+   "enabled": true
+  },
+  {
+   "id": "room-3",
+   "name": "Control Room C",
+   "enabled": true
+  },
+  {
+   "id": "room-4",
+   "name": "Control Room UPSTAIRS",
    "enabled": true
   }
  ],
- "Timers": [],
- "Messages": []
+ "Timers": [
+  {
+   "id": 33,
+   "datetime": 1698462301000,
+   "label": "TEST",
+   "expireMillis": 60000,
+   "publishMillis": 7200000,
+   "roomID": "room-1",
+   "triggersEnabled": true
+  }
+ ],
+ "Messages": [],
+ "VIPXConfigs": [
+  {
+   "host": "127.0.0.1",
+   "port": "9801"
+  }
+ ]
 }

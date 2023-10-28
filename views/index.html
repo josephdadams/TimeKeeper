@@ -8,7 +8,7 @@
 		<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 		<link rel="stylesheet" href="/css/timekeeper.css" />
     </head>
-    <body>
+	<body>
 		<div id="divSelectedRoom" class="selectedRoom"></div>
 		<div id="divSelectRoom" data-bs-theme="dark">
 			<select id="selRoomList" onchange="TimeKeeper_JoinRoom();">
@@ -30,65 +30,67 @@
 		<span class="fa fa-solid fa-plus fa-lg add-timer" data-bs-toggle="modal" onClick="setupAddTimer();" data-bs-target="#modalAddTimer">
 			Add Timer
 		</span>
-		
+
+
 		<!-- Modal -->
+
 		<div class="modal fade" id="modalAddTimer" tabindex="-1" aria-labelledby="modalLabelAddTimer" aria-hidden="true">
 			<div class="modal-dialog" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-				<h5 class="modal-title fs-5" id="modalLabelAddTimer">Add Timer</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title fs-5" id="modalLabelAddTimer">Add Timer</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<div class="form-outline">
+							<label class="form-label" for="addTimerLabel">Label/Description</label>
+							<input type="text" id="addTimerLabel" placeholder="Description of your timer here..." class="form-control" />
+						</div>
+						<div class="form-outline">
+							<label class="form-label" for="addTimerDate">Date/Time to Countdown to</label>
+							<div class="input-group" id="addTimerDate" data-td-target-input="nearest" data-td-target-toggle="nearest">
+								<input id="addTimerDateDT" type="datetime-local" data-td-target="#addTimerDate" step="1" />
+							</div>
+						</div>
+						<div class="form-outline">
+							<label class="form-label" for="addTimerPublish">Publish Time</label>
+							<select id="addTimerPublish" class="form-control">
+								<option value="120000">2 minutes prior</option>
+								<option value="300000">5 minutes prior</option>
+								<option value="600000">10 minutes prior</option>
+								<option value="1200000">20 minutes prior</option>
+								<option value="1800000">30 minutes prior</option>
+								<option value="3600000">1 hour prior</option>
+								<option value="7200000" selected>2 hours prior</option>
+								<option value="86400000">1 day prior</option>
+								<option value="259200000">3 days prior</option>
+								<option value="604800000">1 week prior</option>
+								<option value="0">Add the timer, but don't show it at all</option>
+							</select>
+						</div>
+						<div class="form-outline">
+							<label class="form-label" for="addTimerExpire">Expire Time</label>
+							<select id="addTimerExpire" class="form-control">
+								<option value="0">Immediately</option>
+								<option value="30000">in 30 seconds</option>
+								<option value="60000" selected>in 1 minute</option>
+								<option value="120000">in 2 minutes</option>
+								<option value="300000">in 5 minutes</option>
+								<option value="600000">in 10 minutes</option>
+							</select>
+						</div>
+						<div class="form-outline">
+							<label class="form-label" for="addTimerRoom">Room</label>
+							<select id="addTimerRoom" class="form-control">
+								<option value="room-0">Send to all rooms</option>
+							</select>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+						<button type="button" class="btn btn-primary" onClick="TimeKeeper_AddTimer();">Save changes</button>
+					</div>
 				</div>
-				<div class="modal-body">
-					<div class="form-outline">
-						<label class="form-label" for="addTimerLabel">Label/Description</label>
-						<input type="text" id="addTimerLabel" placeholder="Description of your timer here..." class="form-control" />
-					</div>
-					<div class="form-outline">
-						<label class="form-label" for="addTimerDate">Date/Time to Countdown to</label>
-						<div class="input-group" id="addTimerDate" data-td-target-input="nearest" data-td-target-toggle="nearest">
-						<input id="addTimerDateDT" type="datetime-local" data-td-target="#addTimerDate" step="1" />
-					  </div>
-					</div>
-					<div class="form-outline">
-						<label class="form-label" for="addTimerPublish">Publish Time</label>
-						<select id="addTimerPublish" class="form-control">
-							<option value="120000">2 minutes prior</option>
-							<option value="300000">5 minutes prior</option>
-							<option value="600000">10 minutes prior</option>
-							<option value="1200000">20 minutes prior</option>
-							<option value="1800000">30 minutes prior</option>
-							<option value="3600000">1 hour prior</option>
-							<option value="7200000" selected>2 hours prior</option>
-							<option value="86400000">1 day prior</option>
-							<option value="259200000">3 days prior</option>
-							<option value="604800000">1 week prior</option>
-							<option value="0">Add the timer, but don't show it at all</option>
-						</select>
-					</div>
-					<div class="form-outline">
-						<label class="form-label" for="addTimerExpire">Expire Time</label>
-						<select id="addTimerExpire" class="form-control">
-							<option value="0">Immediately</option>
-							<option value="30000">in 30 seconds</option>
-							<option value="60000" selected>in 1 minute</option>
-							<option value="120000">in 2 minutes</option>
-							<option value="300000">in 5 minutes</option>
-							<option value="600000">in 10 minutes</option>
-						</select>
-					</div>
-					<div class="form-outline">
-						<label class="form-label" for="addTimerRoom">Room</label>
-						<select id="addTimerRoom" class="form-control">
-							<option value="room-0">Send to all rooms</option>
-						</select>
-					</div>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-					<button type="button" class="btn btn-primary" onClick="TimeKeeper_AddTimer();">Save changes</button>
-				</div>
-			</div>
 			</div>
 		</div>
 
@@ -98,12 +100,12 @@
 		<script src="/socket.io/socket.io.js"></script>
 		<script src="/js/timekeeper.js"></script>
 		<script type="text/javascript">
-			
-			var clockHM, clockS, clockAMPM, clockdate;	
-			
+
+			var clockHM, clockS, clockAMPM, clockdate;
+
 			var dtPicker1;
-	
-			$( document ).ready(function() {
+
+			$(document).ready(function () {
 				clockHM = document.getElementById("clockHM");
 				clockS = document.getElementById("clockS");
 				clockAMPM = document.getElementById("clockAMPM");
@@ -125,7 +127,7 @@
 				// Set the default date/time to 2 hours from now
 				let dt = new Date();
 				dt.setHours(dt.getHours() + 2);
-				let dtString = dt.toLocaleString([], {year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second:'2-digit'});
+				let dtString = dt.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 				document.getElementById('addTimerDateDT').value = datetimeLocal(dtString);
 
 				// Set the default publish time to 2 hours prior
@@ -140,6 +142,6 @@
 				// Set the default label to blank
 				document.getElementById('addTimerLabel').value = '';
 			}
-			</script>
-    </body>
+		</script>
+	</body>
 </html>

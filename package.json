@@ -1,12 +1,12 @@
 {
-	"name": "timekeeper",
-	"version": "2.0.1",
+	"name": "TimekeeperEvertzVIPX",
+	"version": "1.0.0",
 	"keywords": [],
-	"author": "Joseph Adams <josephdadams@gmail.com>",
+	"author": "Caleb Furrow <calebfurrow@gmail.com>",
 	"dependencies": {
-		"axios": "^0.26.0",
-		"body-parser": "^1.18.3",
-		"express": "^4.16.3",
-		"socket.io": "^4.6.2"
+		"axios": "^0.26.1",
+		"body-parser": "^1.20.2",
+		"express": "^4.18.2",
+		"socket.io": "^4.7.2"
 	}
 }

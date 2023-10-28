@@ -1,30 +1,26 @@
- /* TimeKeeper */
+/* TimeKeeper */
 
-//express variables
+// Express variables
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
-app.use(bodyParser.json({ type: 'application/json' }));
-
-//socket.io variables
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const listenPort = 4000;
-
 const path = require('path');
-
-//filesystem variables
 const fs = require('fs');
-const JSONdatafile = 'timekeeper-data.json'; //local storage JSON file
+const axios = require('axios').default;
+const net = require('net'); // Added net module
 
-//TimeKeeper Arrays
-var Rooms = []; // array of Room Objects to display
-var Timers = []; // array of Timer Objects to display
-var Messages = []; // array of Message Objects to display
+const listenPort = 4000;
+const JSONdatafile = 'timekeeper-data.json';
 
+var Rooms = [];
+var Timers = [];
+var Messages = [];
+var timerCounter = 32;
 const SupportedTriggerTypes = ['http'];
 
-const axios = require('axios').default; //used for HTTP triggers
+app.use(bodyParser.json({ type: 'application/json' }));
 
 //app route setups
 app.get('/', function (req, res) {
@@ -51,23 +47,20 @@ app.get('/api/room/:roomid', function (req, res) {
 
 	let roomObj = TimeKeeper_GetTimer(roomID);
 
-	if (roomObj === null)
-	{
+	if (roomObj === null) {
 		//return as invalid
-		res.send({returnStatus: 'invalid-room-id'});
+		res.send({ returnStatus: 'invalid-room-id' });
 	}
-	else
-	{
-		res.send({returnStatus: 'success', room: roomObj});
+	else {
+		res.send({ returnStatus: 'success', room: roomObj });
 	}
 });
 
 app.post('/api/room/add', function (req, res) {
 	//add the new timer object into the array
 	let roomObj = TimeKeeper_AddRoom(req.body);
-	if (roomObj !== null)
-	{
-		res.send({returnStatus: 'success', room: roomObj});
+	if (roomObj !== null) {
+		res.send({ returnStatus: 'success', room: roomObj });
 	}
 });
 
@@ -77,21 +70,20 @@ app.post('/api/room/update/:roomid', function (req, res) {
 
 	let roomObj = TimeKeeper_UpdateRoom(roomID, req.body);
 
-	if (roomObj !== null)
-	{
-		res.send({returnStatus: 'success', room: roomObj});
+	if (roomObj !== null) {
+		res.send({ returnStatus: 'success', room: roomObj });
 	}
 });
- 
+
 app.post('/api/room/delete/:roomid', function (req, res) {
 	//updates the room object that already exists in the array
 	let roomID = req.params.roomid;
 
 	TimeKeeper_DeleteRoom(roomID);
 
-	res.send({returnStatus: 'success'});
+	res.send({ returnStatus: 'success' });
 });
- 
+
 //Timer APIs
 app.get('/api/timers', function (req, res) {
 	//gets all Timer objects
@@ -104,46 +96,42 @@ app.get('/api/timer/:timerid', function (req, res) {
 
 	let timerObj = TimeKeeper_GetTimer(timerID);
 
-	if (timerObj === null)
-	{
+	if (timerObj === null) {
 		//return as invalid
-		res.send({returnStatus: 'invalid-timer-id'});
+		res.send({ returnStatus: 'invalid-timer-id' });
 	}
-	else
-	{
-		res.send({returnStatus: 'success', timer: timerObj});
+	else {
+		res.send({ returnStatus: 'success', timer: timerObj });
 	}
 });
 
 app.post('/api/timer/add', function (req, res) {
 	//add the new timer object into the array
 	let timerObj = TimeKeeper_AddTimer(req.body);
-	if (timerObj !== null)
-	{
-		res.send({returnStatus: 'success', timer: timerObj});
+	if (timerObj !== null) {
+		res.send({ returnStatus: 'success', timer: timerObj });
 	}
 });
- 
+
 app.post('/api/timer/update/:timerid', function (req, res) {
 	//updates the timer object that already exists in the array
 	let timerID = req.params.timerid;
 
 	let timerObj = TimeKeeper_UpdateTimer(timerID, req.body);
 
-	if (timerObj !== null)
-	{
-		res.send({returnStatus: 'success', timer: timerObj});
+	if (timerObj !== null) {
+		res.send({ returnStatus: 'success', timer: timerObj });
 	}
 });
- 
+
 app.post('/api/timer/delete/:timerid', function (req, res) {
 	//updates the timer object that already exists in the array
 	let timerID = req.params.timerid;
 
 	TimeKeeper_DeleteTimer(timerID);
 
-	res.send({returnStatus: 'success'});
- });
+	res.send({ returnStatus: 'success' });
+});
 
 app.get('/api/countdown/:roomid/:length', function (req, res) {
 	let roomID = req.params.roomid;
@@ -158,13 +146,12 @@ app.get('/api/countdown/:roomid/:length', function (req, res) {
 	obj.datetime = dt.getTime();
 	obj.publishMillis = 120000;
 	obj.expireMillis = 120000;
-	obj.roomID = roomID;	
+	obj.roomID = roomID;
 
 	//add the new timer object into the array
 	let timerObj = TimeKeeper_AddTimer(obj);
-	if (timerObj !== null)
-	{
-		res.send({returnStatus: 'success', timer: timerObj});
+	if (timerObj !== null) {
+		res.send({ returnStatus: 'success', timer: timerObj });
 	}
 });
 
@@ -173,7 +160,7 @@ app.get('/api/:timerid/triggers-disable', function (req, res) {
 	//disable the triggers for the selected timer
 	let timerObj = TimeKeeper_EnableTriggers(timerID, false);
 	if (timerObj !== null) {
-		res.send({returnStatus: 'success', timer: timerObj});
+		res.send({ returnStatus: 'success', timer: timerObj });
 	}
 });
 
@@ -182,11 +169,11 @@ app.get('/api/:timerid/triggers-enable', function (req, res) {
 	//disable the triggers for the selected timer
 	let timerObj = TimeKeeper_EnableTriggers(timerID, true);
 	if (timerObj !== null) {
-		res.send({returnStatus: 'success', timer: timerObj});
+		res.send({ returnStatus: 'success', timer: timerObj });
 	}
 });
- 
- //Message APIs
+
+//Message APIs
 app.get('/api/messages', function (req, res) {
 	//gets all Message objects
 	res.send(Messages);
@@ -197,7 +184,7 @@ app.post('/api/message/add', function (req, res) {
 	console.log(req.body);
 	//add the new timer object into the array
 	TimeKeeper_AddMessage(req.body);
-	res.send({returnStatus: 'success'});
+	res.send({ returnStatus: 'success' });
 });
 
 app.post('/api/message/update/:messageid', function (req, res) {
@@ -206,38 +193,40 @@ app.post('/api/message/update/:messageid', function (req, res) {
 
 	let messageObj = TimeKeeper_UpdateMessage(messageID, req.body);
 
-	if (messageObj !== null)
-	{
-		res.send({returnStatus: 'success', message: messageObj});
+	if (messageObj !== null) {
+		res.send({ returnStatus: 'success', message: messageObj });
 	}
 });
- 
+
 app.post('/api/message/delete/:messageid', function (req, res) {
 	//updates the timer object that already exists in the array
 	let messageID = req.params.messageid;
 
 	TimeKeeper_DeleteMessage(messageID);
 
-	res.send({returnStatus: 'success'});
+	res.send({ returnStatus: 'success' });
 });
+
+let VIPXConfigs = [];
 
 function loadFile() //loads settings on first load of app
 {
 	let rawdata = fs.readFileSync(JSONdatafile);
-	let myJson = JSON.parse(rawdata); 
+	let myJson = JSON.parse(rawdata);
 
-	if (myJson.Rooms)
-	{
+	if (myJson.VIPXConfigs) {
+		VIPXConfigs = myJson.VIPXConfigs;
+	}
+
+	if (myJson.Rooms) {
 		Rooms = myJson.Rooms;
 	}
 
-	if (myJson.Timers)
-	{
+	if (myJson.Timers) {
 		Timers = myJson.Timers;
 	}
 
-	if (myJson.Messages)
-	{
+	if (myJson.Messages) {
 		Messages = myJson.Messages;
 	}
 }
@@ -247,30 +236,29 @@ function saveFile() //saves settings to a local storage file for later recalling
 	var myJson = {
 		Rooms: Rooms,
 		Timers: Timers,
-		Messages: Messages 
+		Messages: Messages,
+		VIPXConfigs: VIPXConfigs
 	};
 
-	fs.writeFileSync(JSONdatafile, JSON.stringify(myJson, null, 1), 'utf8', function(error) {
-		if (error)
-		{ 
+	fs.writeFileSync(JSONdatafile, JSON.stringify(myJson, null, 1), 'utf8', function (error) {
+		if (error) {
 			console.log('error: ' + error);
 		}
-		else
-		{
+		else {
 			console.log('file saved');
 		}
 	});
+	console.log("Saved to timekeeper-data.json:", Rooms); // Log the data being saved
 }
 
 //SOCKET.IO config
-io.sockets.on('connection', function(socket) {
-	socket.on('connect', function() {
+io.sockets.on('connection', function (socket) {
+	socket.on('connect', function () {
 		console.log('New Client Connected.');
 	});
 
-	socket.on('TimeKeeper_JoinRoom', function(roomID) {
-		switch(roomID)
-		{
+	socket.on('TimeKeeper_JoinRoom', function (roomID) {
+		switch (roomID) {
 			case 'TimeKeeper_Clients':
 				socket.join('TimeKeeper_Clients');
 				break;
@@ -283,38 +271,37 @@ io.sockets.on('connection', function(socket) {
 		}
 	});
 
-	socket.on('TimeKeeper_LeaveRoom', function(roomID) {
+	socket.on('TimeKeeper_LeaveRoom', function (roomID) {
 		socket.leave(roomID);
 		console.log(roomID + ' left.');
 	});
-	
-	socket.on('TimeKeeper_GetAllRooms', function(onlyShowEnabled) {
-		socket.emit('TimeKeeper_Rooms', TimeKeeper_GetRooms(onlyShowEnabled)); 
+
+	socket.on('TimeKeeper_GetAllRooms', function (onlyShowEnabled) {
+		socket.emit('TimeKeeper_Rooms', TimeKeeper_GetRooms(onlyShowEnabled));
 	});
 
-	socket.on('TimeKeeper_GetTimers', function(roomID) {
+	socket.on('TimeKeeper_GetTimers', function (roomID) {
 		socket.emit('TimeKeeper_Timers', TimeKeeper_GetTimers(roomID));
 	});
 
-	socket.on('TimeKeeper_GetMessages', function(roomID) {
-		socket.emit('TimeKeeper_Messages', TimeKeeper_GetMessages(roomID)); 
+	socket.on('TimeKeeper_GetMessages', function (roomID) {
+		socket.emit('TimeKeeper_Messages', TimeKeeper_GetMessages(roomID));
 	});
 
-	socket.on('TimeKeeper_AddTimer', function(timerObj) {
+	socket.on('TimeKeeper_AddTimer', function (timerObj) {
 		TimeKeeper_AddTimer(timerObj);
 	});
 
-	socket.on('TimeKeeper_UpdateTimer', function(timerID, timerObj) {
+	socket.on('TimeKeeper_UpdateTimer', function (timerID, timerObj) {
 		TimeKeeper_UpdateTimer(timerID, timerObj);
 	});
 
-	socket.on('TimeKeeper_DeleteTimer', function(timerID) {
+	socket.on('TimeKeeper_DeleteTimer', function (timerID) {
 		TimeKeeper_DeleteTimer(timerID);
 	});
 
-	socket.on('disconnect', function(){
-		switch(socket.room)
-		{
+	socket.on('disconnect', function () {
+		switch (socket.room) {
 			case 'Viewer':
 				console.log('Viewer Client Disconnected.');
 				break;
@@ -325,54 +312,45 @@ io.sockets.on('connection', function(socket) {
 	});
 });
 
-function uuidv4() //unique UUID generator for IDs
-{
-	return 'xxxxxxxx'.replace(/[xy]/g, function(c) {
-		var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-		return v.toString(16);
-	});
-}
-
 //TimeKeeper Data Functions
-function TimeKeeper_GetRooms(onlyShowEnabled)
-{
+function TimeKeeper_GetRooms(onlyShowEnabled) {
 	let roomsArray = [];
 
-	if (onlyShowEnabled)
-	{
-		for (let i = 0; i < Rooms.length; i++)
-		{
-			if (Rooms[i].enabled)
-			{
+	if (onlyShowEnabled) {
+		for (let i = 0; i < Rooms.length; i++) {
+			if (Rooms[i].enabled) {
 				roomsArray.push(Rooms[i]);
 			}
 		}
 	}
-	else
-	{
+	else {
 		roomsArray = Rooms;
 	}
 
 	return roomsArray;
 }
 
-function TimeKeeper_GetRoom(roomID)
-{
+function TimeKeeper_GetRoom(roomID) {
 	let roomObj = Rooms.find(o => o.id === roomID);
 
-	if (roomObj === undefined)
-	{
+	if (roomObj === undefined) {
 		roomObj = null;
 	}
 
 	return roomObj;
 }
 
-function TimeKeeper_AddRoom(roomObj)
-{
+function TimeKeeper_AddRoom(roomObj) {
 	let newRoomObj = {};
 
-	newRoomObj.id = 'room-' + uuidv4();
+	let roomNumber = extractNumericPart(roomObj.id);
+	newRoomObj.id = uuidv4(roomNumber);
+
+	if (!newRoomObj.id) {
+		console.error("Failed to generate ID for roomObj:", roomObj);
+		return; // or handle this case in some other way
+	}
+
 	newRoomObj.name = roomObj.name;
 	newRoomObj.enabled = roomObj.enabled;
 
@@ -380,11 +358,13 @@ function TimeKeeper_AddRoom(roomObj)
 	saveFile();
 }
 
-function TimeKeeper_UpdateRoom(roomID, roomObj)
-{
+
+
+
+
+function TimeKeeper_UpdateRoom(roomID, roomObj) {
 	let updatedRoomObj = Rooms.find((o, i) => {
-		if (o.id === roomID)
-		{
+		if (o.id === roomID) {
 			Rooms[i] = roomObj; // need to update this to go property by property, and data check each one
 			return true; // stop searching
 		}
@@ -395,11 +375,9 @@ function TimeKeeper_UpdateRoom(roomID, roomObj)
 	return updatedRoomObj;
 }
 
-function TimeKeeper_DeleteRoom(roomID)
-{
+function TimeKeeper_DeleteRoom(roomID) {
 	Rooms.find((o, i) => {
-		if (o.id === roomID)
-		{
+		if (o.id === roomID) {
 			Rooms.splice(i, 1);
 		}
 	});
@@ -407,13 +385,11 @@ function TimeKeeper_DeleteRoom(roomID)
 	saveFile();
 }
 
-function TimeKeeper_GetAllTimers()
-{
+function TimeKeeper_GetAllTimers() {
 	return Timers;
 }
 
-function TimeKeeper_GetTimers(roomID)
-{
+function TimeKeeper_GetTimers(roomID) {
 	let timersArray = Timers.filter(t => t.roomID === roomID || t.roomID === 'room-0' || roomID === 'room-0');
 
 	if (timersArray === undefined) {
@@ -423,28 +399,27 @@ function TimeKeeper_GetTimers(roomID)
 	return timersArray;
 }
 
-function TimeKeeper_GetTimer(timerID)
-{
+function TimeKeeper_GetTimer(timerID) {
 	let timerObj = Timers.find(o => o.id === timerID);
 
-	if (timerObj === undefined)
-	{
+	if (timerObj === undefined) {
 		timerObj = null;
 	}
 
 	return timerObj;
 }
 
-function TimeKeeper_AddTimer(timerObj)
-{
+function TimeKeeper_AddTimer(timerObj) {
 	let newTimerObj = {};
 
-	if (!timerObj.id) { //only add the id if we didn't already send one - helpful for API uses where we might want to have the same ID every time
-		newTimerObj.id = 'timer-' + uuidv4();
-	}
-	else {
+	if (!timerObj.id) {
+		timerCounter++;  // Increment the counter
+		newTimerObj.id = timerCounter;  // Assign the incremented value as the timer's ID
+	} else {
 		newTimerObj.id = timerObj.id;
 	}
+
+	newTimerObj.labelSent = false;
 	newTimerObj.datetime = timerObj.datetime;
 	newTimerObj.label = timerObj.label;
 	newTimerObj.expireMillis = timerObj.expireMillis;
@@ -483,33 +458,28 @@ function TimeKeeper_AddTimer(timerObj)
 	}
 
 	Timers.push(newTimerObj);
-	if (timerObj.roomID === 'room-0')
-	{
+	if (timerObj.roomID === 'room-0') {
 		io.emit('TimeKeeper_Timers', TimeKeeper_GetTimers(timerObj.roomID));
 	}
-	else
-	{
+	else {
 		io.to(timerObj.roomID).emit('TimeKeeper_Timers', TimeKeeper_GetTimers(timerObj.roomID)); //send it to the unique room
 	}
-	
+
 	console.log('sending new timer to room: ' + timerObj.roomID);
-	
+
 	io.to('room-0').emit('TimeKeeper_Timers', TimeKeeper_GetAllTimers()); //send update timers to room-0
-	
+
 	saveFile();
 
 	return newTimerObj;
 }
 
-function TimeKeeper_UpdateTimer(timerID, timerObj)
-{
+function TimeKeeper_UpdateTimer(timerID, timerObj) {
 	let updatedTimerObj = {};
 	let found = false;
 
-	for (let i = 0; i < Timers.length; i++)
-	{
-		if (Timers[i].id === timerID)
-		{
+	for (let i = 0; i < Timers.length; i++) {
+		if (Timers[i].id === timerID) {
 			Timers[i].datetime = timerObj.datetime;
 			Timers[i].label = timerObj.label;
 			Timers[i].publishMillis = timerObj.publishMillis;
@@ -524,8 +494,7 @@ function TimeKeeper_UpdateTimer(timerID, timerObj)
 	{
 		saveFile();
 
-		if (timerObj.roomID !== 'room-0')
-		{
+		if (timerObj.roomID !== 'room-0') {
 			io.to(timerObj.roomID).emit('TimeKeeper_Timers', TimeKeeper_GetTimers(timerObj.roomID));
 		}
 
@@ -542,21 +511,17 @@ function TimeKeeper_UpdateTimer(timerID, timerObj)
 	return updatedTimerObj;
 }
 
-function TimeKeeper_DeleteTimer(timerID)
-{
+function TimeKeeper_DeleteTimer(timerID) {
 	let index = null;
 
-	for (let i = 0; i < Timers.length; i++)
-	{
-		if (Timers[i].id === timerID)
-		{
+	for (let i = 0; i < Timers.length; i++) {
+		if (Timers[i].id === timerID) {
 			index = i;
 			break;
 		}
 	}
 
-	if (index !== null)
-	{
+	if (index !== null) {
 		let timerID = Timers[index].id;
 		let roomID = Timers[index].roomID;
 
@@ -580,14 +545,11 @@ function TimeKeeper_EnableTriggers(timerId, value) {
 	}
 }
 
-function TimeKeeper_GetMessages(roomID)
-{
+function TimeKeeper_GetMessages(roomID) {
 	let messagesArray = [];
 
-	for (let i = 0; i < Messages.length; i++)
-	{
-		if ((Messages[i].roomID === roomID) || (Messages[i].roomID === 'room-0'))
-		{
+	for (let i = 0; i < Messages.length; i++) {
+		if ((Messages[i].roomID === roomID) || (Messages[i].roomID === 'room-0')) {
 			messagesArray.push(Messages[i]);
 		}
 	}
@@ -595,20 +557,17 @@ function TimeKeeper_GetMessages(roomID)
 	return messagesArray;
 }
 
-function TimeKeeper_GetMessage(messageID)
-{
+function TimeKeeper_GetMessage(messageID) {
 	let messageObj = Messages.find(o => o.id === messageID);
 
-	if (messageObj === undefined)
-	{
+	if (messageObj === undefined) {
 		messageObj = null;
 	}
 
 	return messageObj;
 }
 
-function TimeKeeper_AddMessage(messageObj)
-{
+function TimeKeeper_AddMessage(messageObj) {
 	let newMessageObj = {};
 
 	newMessageObj.id = 'message-' + uuidv4();
@@ -620,12 +579,10 @@ function TimeKeeper_AddMessage(messageObj)
 
 	Messages.push(newMessageObj);
 
-	if (messageObj.roomID === 'room-0')
-	{
+	if (messageObj.roomID === 'room-0') {
 		io.emit('TimeKeeper_Messages', TimeKeeper_GetTimers(messageObj.roomID));
 	}
-	else
-	{
+	else {
 		io.to(messageObj.roomID).emit('TimeKeeper_Messages', TimeKeeper_GetTimers(messageObj.roomID));
 	}
 
@@ -634,15 +591,12 @@ function TimeKeeper_AddMessage(messageObj)
 	saveFile();
 }
 
-function TimeKeeper_UpdateMessage(messageID, messageObj)
-{
+function TimeKeeper_UpdateMessage(messageID, messageObj) {
 	let updatedMessageObj = {};
 	let found = false;
 
-	for (let i = 0; i < Messages.length; i++)
-	{
-		if (Messages[i].id === messageID)
-		{
+	for (let i = 0; i < Messages.length; i++) {
+		if (Messages[i].id === messageID) {
 			Messages[i].datetime = messageObj.datetime;
 			Messages[i].message = messageObj.message;
 			Messages[i].publishMillis = messageObj.publishMillis;
@@ -657,12 +611,10 @@ function TimeKeeper_UpdateMessage(messageID, messageObj)
 	{
 		saveFile();
 
-		if (messageObj.roomID === 'room-0')
-		{
+		if (messageObj.roomID === 'room-0') {
 			io.emit('TimeKeeper_Messages', TimeKeeper_GetMessages(messageObj.roomID));
 		}
-		else
-		{
+		else {
 			io.to(messageObj.roomID).emit('TimeKeeper_Messages', TimeKeeper_GetMessages(messageObj.roomID));
 		}
 	}
@@ -677,31 +629,25 @@ function TimeKeeper_UpdateMessage(messageID, messageObj)
 	return updatedMessageObj;
 }
 
-function TimeKeeper_DeleteMessage(messageID)
-{
+function TimeKeeper_DeleteMessage(messageID) {
 	let index = null;
 
-	for (let i = 0; i < Messages.length; i++)
-	{
-		if (Messages[i].id === messageID)
-		{
+	for (let i = 0; i < Messages.length; i++) {
+		if (Messages[i].id === messageID) {
 			index = i;
 			break;
 		}
 	}
 
-	if (index !== null)
-	{
+	if (index !== null) {
 		let roomID = Messages[index].roomID;
 
 		Messages.splice(index, 1);
 
-		if (roomID === 'room-0')
-		{
+		if (roomID === 'room-0') {
 			io.emit('TimeKeeper_Messages', TimeKeeper_GetMessages(roomID));
 		}
-		else
-		{
+		else {
 			io.to(roomID).emit('TimeKeeper_Messages', TimeKeeper_GetMessages(roomID));
 		}
 	}
@@ -709,8 +655,7 @@ function TimeKeeper_DeleteMessage(messageID)
 	saveFile();
 }
 
-function TimeKeeper_ReviewTimers()
-{
+function TimeKeeper_ReviewTimers() {
 	// looks at all the timers and deletes any that are older than 5 minutes (that ran out 5 minutes ago or more)
 	console.log('Reviewing old timers and messages.');
 
@@ -719,8 +664,7 @@ function TimeKeeper_ReviewTimers()
 	let Messages_ToDelete = [];
 
 	//Review Timers for expired ones
-	for (let i = 0; i < Timers.length; i++)
-	{
+	for (let i = 0; i < Timers.length; i++) {
 		let dt = Timers[i].datetime;
 		let distance = dt - d + 1000;
 		if (distance < - (5 * 60 * 1000)) // 5 mimutes
@@ -731,14 +675,12 @@ function TimeKeeper_ReviewTimers()
 		}
 	}
 
-	for (let i = 0; i < Timers_ToDelete.length; i++)
-	{
+	for (let i = 0; i < Timers_ToDelete.length; i++) {
 		TimeKeeper_DeleteTimer(Timers_ToDelete[i]);
 	}
 
 	//Review Messages for expired ones
-	for (let i = 0; i < Messages.length; i++)
-	{
+	for (let i = 0; i < Messages.length; i++) {
 		let dt = Messages[i].datetime;
 		let distance = dt - d + 1000;
 		if (distance < - (5 * 60 * 1000)) // 5 mimutes
@@ -749,8 +691,7 @@ function TimeKeeper_ReviewTimers()
 		}
 	}
 
-	for (let i = 0; i < Messages_ToDelete.length; i++)
-	{
+	for (let i = 0; i < Messages_ToDelete.length; i++) {
 		TimeKeeper_DeleteMessage(Messages_ToDelete[i]);
 	}
 
@@ -759,40 +700,134 @@ function TimeKeeper_ReviewTimers()
 	setTimeout(TimeKeeper_ReviewTimers, 60 * 1000); // runs every minute
 }
 
-function TimeKeeper_CheckTriggers()
-{
-	//looks at all the timers and runs any triggers if it is time to do so
-	for (let i = 0; i < Timers.length; i++)
-	{
-		let timer = Timers[i];
-		if (timer.triggers) {
-			let dtTimer = timer.datetime;
-			if (timer.triggers.length > 0) {
-				for (let j = 0; j < timer.triggers.length; j++) {
-					let trigger = timer.triggers[j];
-					let time = trigger.time;
-					let dtTrigger = dtTimer + time; //the time since epoch for the trigger time. Could be more or less than the actual timer
-					let dtNow = new Date().getTime(); //curent epoch time
-					console.log('dtTimer:  ' + dtTimer);
-					console.log('dtTrigger:' + dtTrigger);
-					console.log('dtNow:    ' + dtNow);
-					if (dtTrigger <= dtNow) { //the trigger needs to be run
-						TimeKeeper_CheckTrigger(timer.id, trigger.id);
-					}
-					else {
-						console.log('no');
-					}
-				}
+function formatTimer(milliseconds) {
+    let totalSeconds = Math.floor(milliseconds / 1000);
+    let days = Math.floor(totalSeconds / 86400);
+    let hours = Math.floor((totalSeconds % 86400) / 3600);
+    let minutes = Math.floor((totalSeconds % 3600) / 60);
+    let seconds = totalSeconds % 60;
+
+	// Ensure leading zeros
+	days = days.toString().padStart(2, '0');
+	hours = hours.toString().padStart(2, '0');
+	minutes = minutes.toString().padStart(2, '0');
+	seconds = seconds.toString().padStart(2, '0');
+
+    return `${days}:${hours}:${minutes}:${seconds}`;
+}
+
+function sendDataToVipxCard(data) {
+	VIPXConfigs.forEach(config => {
+		const client = new net.Socket();
+		client.connect(config.port, config.host, function () {
+			console.log('Connected to vipx card at ' + config.host + ':' + config.port);
+			if (data) {
+				client.write(data);
+			} else {
+				console.error('Data is undefined. Not writing to socket.');
 			}
-			else {
-				//no triggers, so let's just check to see if the timer has expired, and delete it if so
-				let dtNow = new Date().getTime(); //curent epoch time
-				if (dtTimer <= dtNow) { //the timer needs to be deleted
-					TimeKeeper_DeleteTimer(timer.id);
-				}
-			}
+			client.end();
+		});
+
+		client.on('data', function (data) {
+			console.log('Received from vipx card: ' + data);
+		});
+
+		client.on('error', function (err) {
+			console.error('Error connecting to ' + config.host + ':' + config.port + ' - ' + err.message);
+		});
+
+		client.on('close', function () {
+			console.log('Connection closed');
+		});
+	});
+}
+
+function formatUMDData(timerID, countdown, label, color) {
+	// Determine color based on countdown value
+	if (!color) {
+		if (countdown > '00:00:02:00') {
+			color = 'green';
+		} else if (countdown <= '00:00:02:00' && countdown > '00:00:00:00') {
+			color = 'amber';
+		} else if (countdown === '00:00:00:00') {
+			color = 'red';
 		}
 	}
+
+	// Format for the countdown timer with color (first command)
+	let colorData = '';
+	switch (color) {
+		case 'green':
+			colorData = `%170C`;
+			break;
+		case 'amber':
+			colorData = `%255C`;
+			break;
+		case 'red':
+			colorData = `%85C`;
+			break;
+	}
+	
+	// Convert timerID to a numeric value and add 10
+	let uniqueID = parseInt(timerID);
+
+	let countdownDataWithColor = `%${uniqueID}D%1S${colorData}${countdown}%Z`;
+
+	// Format for the timer label (second command)
+	let timerLabelData = `%${uniqueID}D%2S${label}%Z`;
+
+	return {
+		countdownDataWithColor: countdownDataWithColor,
+		timerLabelData: timerLabelData
+	};
+}
+
+function TimeKeeper_CheckTriggers() {
+	for (let i = 0; i < Timers.length; i++) {
+		let timer = Timers[i];
+		let dtTimer = timer.datetime;
+		let dtNow = new Date().getTime(); // Current epoch time
+		let remainingTime = dtTimer - dtNow;
+
+		// Convert remainingTime to the desired format (e.g., HH:MM:SS:FF)
+		let formattedTime = formatTimer(remainingTime); // Assuming you have a function called formatTimer
+
+		// Determine the color based on the formattedTime (you can add this logic if needed)
+		let color; // Logic to determine the color based on formattedTime
+
+		// Format the data for the VIPX card
+		let umdData = formatUMDData(timer.id, formattedTime, timer.label, color);
+
+		// Send the formatted data to the vipx card
+		if (!timer.labelSent) {
+			sendDataToVipxCard(umdData.timerLabelData);
+			timer.labelSent = true; // Set the flag to true after sending
+		}
+
+		sendDataToVipxCard(umdData.countdownDataWithColor);
+
+
+        if (timer.triggers) {
+            let dtTimer = timer.datetime;
+            if (timer.triggers.length > 0) {
+                for (let j = 0; j < timer.triggers.length; j++) {
+                    let trigger = timer.triggers[j];
+                    let time = trigger.time;
+                    let dtTrigger = dtTimer + time;
+                    let dtNow = new Date().getTime();
+                    if (dtTrigger <= dtNow) {
+                        TimeKeeper_CheckTrigger(timer.id, trigger.id);
+                    }
+                }
+            } else {
+                let dtNow = new Date().getTime();
+                if (dtTimer <= dtNow) {
+                    TimeKeeper_DeleteTimer(timer.id);
+                }
+            }
+        }
+    }
 }
 
 function TimeKeeper_CheckTrigger(timerId, triggerId) {
@@ -840,7 +875,7 @@ function TimeKeeper_ExecuteTrigger_HTTP(triggerObj) {
 		if (props.contentType) {
 			options.headers = { 'content-type': props.contentType }
 		}
-		
+
 		axios(options);
 	}
 	else { //maybe add PATCH, PUT, etc. some day
@@ -852,6 +887,6 @@ http.listen(listenPort, function () {
 	console.log('listening on *:' + listenPort);
 });
 
-loadFile(); //loads the last saved set of data
-TriggerInterval = setInterval(TimeKeeper_CheckTriggers, 500); //starts the process to see which triggers need running
-TimeKeeper_ReviewTimers(); //starts the review process to delete expired timers and messages from the arrays
+loadFile();
+TriggerInterval = setInterval(TimeKeeper_CheckTriggers, 500);
+TimeKeeper_ReviewTimers();

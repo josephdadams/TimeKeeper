@@ -24,6 +24,15 @@ body
 	color: #ffffff;
 }
 
+.timer-id {
+	font-size: 1.5vw;
+	color: #ffffff;
+	padding: 5px;
+	background-color: #333333;
+	border-radius: 5px;
+	margin-bottom: 10px;
+}
+
 .timer-controls {
 	position: relative;
 	float: right;
