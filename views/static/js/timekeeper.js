@@ -224,7 +224,7 @@ function TimeKeeper_UpdateAllTimers(d)
 			let dt_seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
 			// Display the timer
-			if (distance < publishMillis)
+			if ((distance < publishMillis) || (globalUnpublishedTimers == true))
 			{
 				if (dt_days > 0)
 				{
