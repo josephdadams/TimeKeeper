@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  nodejs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: timekeeper
+    container_name: timekeeper
+    restart: unless-stopped
+    environment:
+      - PORT=4000
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/home/node/app
+      - node_modules:/home/node/app/node_modules

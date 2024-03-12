@@ -9,7 +9,7 @@ app.use(bodyParser.json({ type: 'application/json' }));
 //socket.io variables
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const listenPort = 4000;
+const listenPort = process.env.PORT || 4000;
 
 const path = require('path');
 
