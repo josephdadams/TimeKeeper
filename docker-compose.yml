@@ -12,3 +12,5 @@ services:
       - PORT=$PORT
     ports:
       - "4000:4000"
+    volumes:
+      - .:/home/node/app
