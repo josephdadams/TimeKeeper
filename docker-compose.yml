@@ -5,12 +5,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: timekeeper
-    container_name: timekeeper
+    volumes:
+      - .:/usr/src/app/
+    container_name: TimeKeeper
     restart: unless-stopped
     environment:
       - PORT=$PORT
     ports:
       - "4000:4000"
-    volumes:
-      - .:/home/node/app

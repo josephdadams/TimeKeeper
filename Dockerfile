@@ -1,10 +1,15 @@
 FROM node:18.19.1-alpine
 
-RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app
-WORKDIR /home/node/app
-COPY package*.json ./
-USER node
+# Create app directory
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+# Install app dependencies
+COPY package.json /usr/src/app/
 RUN npm install
-COPY --chown=node:node . .
+
+# Bundle app source
+COPY . /usr/src/app
+
 EXPOSE 4000
 CMD [ "node", "main.js" ]
