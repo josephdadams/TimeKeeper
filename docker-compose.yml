@@ -1,15 +1,10 @@
-version: '3'
+version: '3.8'
 
 services:
-  nodejs:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - .:/usr/src/app/
+  app:
+    build: .
     container_name: TimeKeeper
-    restart: unless-stopped
-    environment:
-      - PORT=$PORT
     ports:
-      - "4000:4000"
+      - '4000:4000'
+    environment:
+      - PORT=4000

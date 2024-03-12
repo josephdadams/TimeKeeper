@@ -1,15 +1,19 @@
 FROM node:18.19.1-alpine
 
-# Create app directory
-RUN mkdir -p /usr/src/app
+# Set the working directory
 WORKDIR /usr/src/app
 
-# Install app dependencies
-COPY package.json /usr/src/app/
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
 RUN npm install
 
-# Bundle app source
-COPY . /usr/src/app
+# Copy the application files
+COPY . .
 
+# Expose the port
 EXPOSE 4000
+
+# Start the application
 CMD [ "node", "main.js" ]
