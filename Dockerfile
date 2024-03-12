@@ -1,7 +1,10 @@
 FROM node:18.19.1-alpine
 
-WORKDIR /app
+RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app
+WORKDIR /home/node/app
 COPY package*.json ./
-RUN npm i
+USER node
+RUN npm install
+COPY --chown=node:node . .
 EXPOSE 4000
-CMD ["node", "main.js"]
+CMD [ "node", "app.js" ]
